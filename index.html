@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>GoList</title>
+<meta name="theme-color" content="#93A7CC">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; background: #F3F5F9; color: #2B3245; padding-bottom: 40px; }
+  header { background: #93A7CC; color: #fff; padding: 16px; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 6px rgba(60,80,120,.25); }
+  header h1 { font-size: 22px; letter-spacing: .5px; }
+  header .sub { font-size: 13px; opacity: .9; margin-top: 2px; }
+  main { padding: 12px; max-width: 640px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(60,80,120,.12); }
+  .card h2 { font-size: 16px; color: #46608C; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; }
+  input[type="text"], input[type="url"] { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border: 1.5px solid #C4CFE3; border-radius: 10px; background: #FBFCFE; color: #2B3245; }
+  input[type="text"]:focus, input[type="url"]:focus { outline: none; border-color: #6E8BB8; }
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 10px; font-size: 15px; padding: 10px 14px; }
+  .btn-main { background: #6E8BB8; color: #fff; font-weight: 600; white-space: nowrap; }
+  .btn-sub { background: #E7EDF6; color: #46608C; }
+  .btn-danger { background: #F6E7E7; color: #A05050; }
+  .note { font-size: 13px; color: #71809B; margin-top: 8px; line-height: 1.5; }
+  #results { margin-top: 10px; }
+  .result { display: flex; align-items: center; gap: 8px; padding: 10px 4px; border-top: 1px solid #E3E9F3; }
+  .result:first-child { border-top: none; }
+  .result .info { flex: 1; min-width: 0; }
+  .result .name { font-size: 16px; font-weight: 600; }
+  .result .addr { font-size: 12.5px; color: #71809B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result button { padding: 8px 12px; font-size: 14px; }
+  .result .saved { font-size: 14px; color: #4C9464; font-weight: 600; white-space: nowrap; }
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filters button { flex: 1; background: #fff; color: #46608C; border: 1.5px solid #C4CFE3; font-weight: 600; }
+  .filters button.on { background: #6E8BB8; border-color: #6E8BB8; color: #fff; }
+  .place .name { font-size: 18px; font-weight: 700; }
+  .place .addr { font-size: 13px; color: #71809B; margin-top: 2px; }
+  .place .memo { width: 100%; margin-top: 10px; font-size: 15px; }
+  .place .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .place .btns button { flex: 1; min-width: 70px; padding: 10px 6px; font-size: 14.5px; }
+  .place.visited { opacity: .75; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; color: #fff; background: #8FB996; border-radius: 999px; padding: 2px 9px; margin-left: 8px; vertical-align: 2px; }
+  .empty { text-align: center; color: #71809B; font-size: 15px; padding: 28px 10px; line-height: 1.7; }
+  details.card summary { font-size: 16px; color: #46608C; font-weight: 600; cursor: pointer; }
+  details.card .inner { margin-top: 10px; }
+  details.card p { font-size: 14px; line-height: 1.7; color: #45526B; margin-bottom: 6px; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📍 GoList</h1>
+  <div class="sub">行きたい場所をためるリスト</div>
+</header>
+<main>
+
+  <section class="card">
+    <h2>場所をさがして保存</h2>
+    <div class="row">
+      <input type="text" id="q" placeholder="例：住吉大社、〇〇カフェ" autocomplete="off">
+      <button class="btn-main" id="btn-search">探す</button>
+    </div>
+    <div id="results"></div>
+    <p class="note">出てきた候補の「＋保存」でリストに入ります。</p>
+  </section>
+
+  <details class="card">
+    <summary>🔗 Googleマップのリンクで保存</summary>
+    <div class="inner stack">
+      <input type="url" id="link-url" placeholder="Googleマップの共有リンクを貼る">
+      <input type="text" id="link-name" placeholder="場所の名前（短いリンクの時は必須）">
+      <button class="btn-main" id="btn-link-save">このリンクで保存</button>
+      <p class="note">Googleマップで場所を開いて「共有」→リンクをコピーして貼ってください。長いリンクなら名前は自動で入ります。</p>
+    </div>
+  </details>
+
+  <div class="filters">
+    <button id="f-all" class="on">すべて</button>
+    <button id="f-want">行きたい</button>
+    <button id="f-went">行った</button>
+  </div>
+
+  <div id="list"></div>
+
+  <details class="card">
+    <summary>💾 バックアップ</summary>
+    <div class="inner stack">
+      <button class="btn-sub" id="btn-export">書き出し（ファイルに保存）</button>
+      <button class="btn-sub" id="btn-import">読み込み（ファイルから戻す）</button>
+      <input type="file" id="file-import" accept=".json,application/json" style="display:none">
+      <p class="note">読み込むと今のリストは置き換わります。機種変更の前に書き出しておいてください。</p>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>❓ 使い方</summary>
+    <div class="inner">
+      <p>・行きたい場所は、名前で検索するか、Googleマップの共有リンクを貼って保存します。</p>
+      <p>・行くときは、カードの「🗺 マップ」でGoogleマップが開きます。「🚗 ルート」は今いる場所からの道順です。</p>
+      <p>・行ったら「行った ✓」を押すと印がつきます。上のボタンで「行きたい」だけ／「行った」だけに絞れます。</p>
+      <p>・メモ欄には「駐車場あり」「〇〇が名物」など一言どうぞ。</p>
+      <p>・データはこのスマホの中だけに保存されます。</p>
+    </div>
+  </details>
+
+</main>
+<script>
+'use strict';
+var KEY = 'golist_places_v1';
+var places = [];
+try { places = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { places = []; }
+var filter = 'all';
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(places)); } catch(e) {}
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function mapsUrl(p){
+  if (p.url) return p.url;
+  if (p.lat != null) return 'https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lng;
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.name);
+}
+function dirUrl(p){
+  var dest = (p.lat != null) ? (p.lat + ',' + p.lng) : encodeURIComponent(p.name);
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + dest;
+}
+
+function render(){
+  var box = document.getElementById('list');
+  var items = places.filter(function(p){
+    if (filter === 'want') return !p.visited;
+    if (filter === 'went') return !!p.visited;
+    return true;
+  });
+  document.getElementById('f-all').classList.toggle('on', filter === 'all');
+  document.getElementById('f-want').classList.toggle('on', filter === 'want');
+  document.getElementById('f-went').classList.toggle('on', filter === 'went');
+  if (!items.length){
+    box.innerHTML = '<div class="card empty">' + (places.length ? 'この絞り込みでは何もありません。' : 'まだ場所がありません。<br>上の検索から保存してみてください。') + '</div>';
+    return;
+  }
+  box.innerHTML = items.map(function(p){
+    return '<section class="card place' + (p.visited ? ' visited' : '') + '" data-id="' + p.id + '">'
+      + '<div class="name">' + esc(p.name) + (p.visited ? '<span class="chip">行った ✓</span>' : '') + '</div>'
+      + (p.addr ? '<div class="addr">' + esc(p.addr) + '</div>' : '')
+      + '<input type="text" class="memo" placeholder="メモ（一言）" value="' + esc(p.memo || '') + '">'
+      + '<div class="btns">'
+      + '<button class="btn-main" data-act="map">🗺 マップ</button>'
+      + '<button class="btn-sub" data-act="dir">🚗 ルート</button>'
+      + '<button class="btn-sub" data-act="visit">' + (p.visited ? '戻す' : '行った ✓') + '</button>'
+      + '<button class="btn-danger" data-act="del">削除</button>'
+      + '</div></section>';
+  }).join('');
+}
+
+document.getElementById('list').addEventListener('click', function(ev){
+  var btn = ev.target.closest('button');
+  var card = ev.target.closest('.place');
+  if (!card) return;
+  var p = places.find(function(x){ return x.id === card.dataset.id; });
+  if (!p) return;
+  if (btn){
+    var act = btn.dataset.act;
+    if (act === 'map') window.open(mapsUrl(p), '_blank');
+    else if (act === 'dir') window.open(dirUrl(p), '_blank');
+    else if (act === 'visit'){ p.visited = !p.visited; save(); render(); }
+    else if (act === 'del'){ if (confirm('「' + p.name + '」を削除しますか？')){ places = places.filter(function(x){ return x.id !== p.id; }); save(); render(); } }
+    return;
+  }
+});
+document.getElementById('list').addEventListener('change', function(ev){
+  if (!ev.target.classList.contains('memo')) return;
+  var card = ev.target.closest('.place');
+  var p = places.find(function(x){ return x.id === card.dataset.id; });
+  if (p){ p.memo = ev.target.value; save(); }
+});
+
+document.getElementById('f-all').addEventListener('click', function(){ filter = 'all'; render(); });
+document.getElementById('f-want').addEventListener('click', function(){ filter = 'want'; render(); });
+document.getElementById('f-went').addEventListener('click', function(){ filter = 'went'; render(); });
+
+async function search(){
+  var q = document.getElementById('q').value.trim();
+  var box = document.getElementById('results');
+  if (!q){ box.innerHTML = ''; return; }
+  box.innerHTML = '<p class="note">探しています…</p>';
+  try {
+    var res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&accept-language=ja&q=' + encodeURIComponent(q));
+    var data = await res.json();
+    if (!data.length){ box.innerHTML = '<p class="note">見つかりませんでした。地名や施設名を変えて試してください。</p>'; return; }
+    box.innerHTML = data.map(function(r, i){
+      var parts = (r.display_name || '').split(', ');
+      var name = parts[0] || r.display_name;
+      var addr = parts.slice(1).join(', ');
+      return '<div class="result"><div class="info"><div class="name">' + esc(name) + '</div><div class="addr">' + esc(addr) + '</div></div>'
+        + '<button class="btn-main" data-i="' + i + '">＋保存</button></div>';
+    }).join('');
+    box.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        var r = data[Number(b.dataset.i)];
+        var parts = (r.display_name || '').split(', ');
+        addPlace({ name: parts[0] || r.display_name, addr: parts.slice(1).join(', '), lat: parseFloat(r.lat), lng: parseFloat(r.lon), url: '' });
+        b.outerHTML = '<span class="saved">保存した ✓</span>';
+      });
+    });
+  } catch(e) {
+    box.innerHTML = '<p class="note">検索できませんでした。電波の良いところで、もう一度試してください。</p>';
+  }
+}
+document.getElementById('btn-search').addEventListener('click', search);
+document.getElementById('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') search(); });
+
+function addPlace(p){
+  p.id = uid(); p.memo = ''; p.visited = false; p.createdAt = Date.now();
+  places.unshift(p); save(); render();
+}
+
+document.getElementById('btn-link-save').addEventListener('click', function(){
+  var url = document.getElementById('link-url').value.trim();
+  var name = document.getElementById('link-name').value.trim();
+  if (!url){ alert('リンクを貼ってください。'); return; }
+  if (!name){
+    var m = url.match(/\/place\/([^/@]+)/);
+    if (m){ try { name = decodeURIComponent(m[1].replace(/\+/g, ' ')); } catch(e) { name = ''; } }
+  }
+  if (!name){ alert('場所の名前を入れてください（短いリンクは名前が読み取れません）。'); return; }
+  addPlace({ name: name, addr: '', lat: null, lng: null, url: url });
+  document.getElementById('link-url').value = '';
+  document.getElementById('link-name').value = '';
+  alert('保存しました。');
+});
+
+document.getElementById('btn-export').addEventListener('click', function(){
+  var data = JSON.stringify({ app: 'golist', ver: 1, places: places }, null, 2);
+  var blob = new Blob([data], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'golist-backup.json';
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+});
+document.getElementById('btn-import').addEventListener('click', function(){
+  document.getElementById('file-import').click();
+});
+document.getElementById('file-import').addEventListener('change', function(ev){
+  var f = ev.target.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      var data = JSON.parse(reader.result);
+      var arr = Array.isArray(data) ? data : data.places;
+      if (!Array.isArray(arr)) throw new Error('bad');
+      if (!confirm('今のリストを置き換えて、' + arr.length + '件を読み込みますか？')) return;
+      places = arr; save(); render();
+      alert('読み込みました。');
+    } catch(e) { alert('このファイルは読み込めませんでした。'); }
+    ev.target.value = '';
+  };
+  reader.readAsText(f);
+});
+
+render();
+</script>
+</body>
+</html>
