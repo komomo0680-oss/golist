@@ -68,6 +68,16 @@
   </section>
 
   <details class="card">
+    <summary>✏️ 名前だけで保存</summary>
+    <div class="inner stack">
+      <input type="text" id="name-only-name" placeholder="場所の名前（必須）">
+      <input type="text" id="name-only-hint" placeholder="市や駅名など（任意・当たりを付けやすくする）">
+      <button class="btn-main" id="btn-name-save">この名前で保存</button>
+      <p class="note">検索で出てこないお店や施設は、これが確実です。「マップ」を押すと、Googleマップが名前で探してくれます。</p>
+    </div>
+  </details>
+
+  <details class="card">
     <summary>🔗 Googleマップのリンクで保存</summary>
     <div class="inner stack">
       <input type="url" id="link-url" placeholder="Googleマップの共有リンクを貼る">
@@ -98,7 +108,7 @@
   <details class="card">
     <summary>❓ 使い方</summary>
     <div class="inner">
-      <p>・行きたい場所は、名前で検索するか、Googleマップの共有リンクを貼って保存します。</p>
+      <p>・行きたい場所は、名前で検索するか、「名前だけで保存」、Googleマップの共有リンクを貼って保存します。お店や施設は検索で出てこないことがあるので、その時は「名前だけで保存」が確実です。</p>
       <p>・行くときは、カードの「🗺 マップ」でGoogleマップが開きます。「🚗 ルート」は今いる場所からの道順です。</p>
       <p>・行ったら「行った ✓」を押すと印がつきます。上のボタンで「行きたい」だけ／「行った」だけに絞れます。</p>
       <p>・メモ欄には「駐車場あり」「〇〇が名物」など一言どうぞ。</p>
@@ -124,13 +134,16 @@ function esc(s){
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+function queryName(p){
+  return p.name + (p.addr ? ' ' + p.addr : '');
+}
 function mapsUrl(p){
   if (p.url) return p.url;
   if (p.lat != null) return 'https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lng;
-  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.name);
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(queryName(p));
 }
 function dirUrl(p){
-  var dest = (p.lat != null) ? (p.lat + ',' + p.lng) : encodeURIComponent(p.name);
+  var dest = (p.lat != null) ? (p.lat + ',' + p.lng) : encodeURIComponent(queryName(p));
   return 'https://www.google.com/maps/dir/?api=1&destination=' + dest;
 }
 
@@ -196,7 +209,7 @@ async function search(){
   try {
     var res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&accept-language=ja&q=' + encodeURIComponent(q));
     var data = await res.json();
-    if (!data.length){ box.innerHTML = '<p class="note">見つかりませんでした。地名や施設名を変えて試してください。</p>'; return; }
+    if (!data.length){ box.innerHTML = '<p class="note">見つかりませんでした。お店や施設は出てこないことが多いです。下の「名前だけで保存」か「Googleマップのリンクで保存」を使ってください。</p>'; return; }
     box.innerHTML = data.map(function(r, i){
       var parts = (r.display_name || '').split(', ');
       var name = parts[0] || r.display_name;
@@ -223,6 +236,16 @@ function addPlace(p){
   p.id = uid(); p.memo = ''; p.visited = false; p.createdAt = Date.now();
   places.unshift(p); save(); render();
 }
+
+document.getElementById('btn-name-save').addEventListener('click', function(){
+  var name = document.getElementById('name-only-name').value.trim();
+  var hint = document.getElementById('name-only-hint').value.trim();
+  if (!name){ alert('場所の名前を入れてください。'); return; }
+  addPlace({ name: name, addr: hint, lat: null, lng: null, url: '' });
+  document.getElementById('name-only-name').value = '';
+  document.getElementById('name-only-hint').value = '';
+  alert('保存しました。');
+});
 
 document.getElementById('btn-link-save').addEventListener('click', function(){
   var url = document.getElementById('link-url').value.trim();
